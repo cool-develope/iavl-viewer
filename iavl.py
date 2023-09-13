@@ -4,20 +4,25 @@ class Tree:
         self.root = None
         self.size = 0
 
-    def insert(self, key, value):
+    def insert(self, key, value, rebalance=True):
         if self.root is None:
             self.root = Node(key, value)
         else:
-            self.root = self.root.insert(key, value)
+            self.root = self.root.insert(key, value, rebalance)
         self.size += 1
 
-    def delete(self, key):
+    def delete(self, key, rebalance=True):
         if self.root is None:
             raise KeyError(key)
         else:
-            self.root = self.root.delete(key)
+            self.root = self.root.delete(key, rebalance)
             self.size -= 1
     
+    def rebalance(self):
+        # print("rebalancing: ", self.root.display())
+        if self.root is not None:
+            self.root = self.root.rebalance_all()
+
     def __len__(self):
         return self.size
 
@@ -36,7 +41,21 @@ class Tree:
         if self.root is None:
             return ''
         return self.root.display()
+
+class Metrics:
+    count = 0
+
+    @classmethod
+    def call(cls):
+        cls.count += 1
     
+    @classmethod
+    def reset(cls):
+        cls.count = 0
+
+    @classmethod
+    def get(cls):
+        return cls.count
 
 class Node:
     def __init__(self, key, value):
@@ -47,7 +66,7 @@ class Node:
         self.right = None
 
     def display(self, level=0, prefix=''):
-        ret = "\t"*level + prefix + repr(self.key) + " : " + repr(self.value) + "\n"
+        ret = "\t"*level + prefix + repr(self.key) + " : " + repr(self.height) + "\n"
         if self.left is not None:
             ret += self.left.display(level+1, 'L: ')
         if self.right is not None:
@@ -62,15 +81,16 @@ class Node:
         return node
 
     def insert(self, key, value, rebalance=True):
+        # print("inserting {} into {}".format(key, self.display()))
         if self.is_leaf():
             if key < self.key:
-                node = Node(key, '')
+                node = Node(self.key, '')
                 node.left = Node(key, value)
                 node.right = self
                 node.height = 2
                 return node
             elif key > self.key:
-                node = Node(self.key, '')
+                node = Node(key, '')
                 node.left = self
                 node.right = Node(key, value)
                 node.height = 2
@@ -83,6 +103,7 @@ class Node:
                 node.left = self.left.insert(key, value)
             else:
                 node.right = self.right.insert(key, value)
+            node.update_height()
             if rebalance:
                 return node.rebalance()
             return node
@@ -114,8 +135,8 @@ class Node:
             return node                 
 
     def rebalance(self):
-        self.update_height()
         balance = self.balance()
+
         if balance > 1:
             if self.left.balance() < 0:
                 self.left = self.left.rotate_left()
@@ -126,7 +147,16 @@ class Node:
             return self.rotate_left()
         return self
 
+    def rebalance_all(self):
+        while abs(self.balance()) > 1:
+            self.left = self.left.rebalance_all()
+            self.right = self.right.rebalance_all()
+            self = self.rebalance()
+
+        return self
+
     def rotate_right(self):
+        Metrics.call()
         node = self.clone()
         root = node.left.clone()
         node.left = root.right
@@ -136,6 +166,7 @@ class Node:
         return root
 
     def rotate_left(self):
+        Metrics.call()
         node = self.clone()
         root = self.right.clone()
         node.right = root.left

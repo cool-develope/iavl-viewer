@@ -36,9 +36,26 @@ class Viewer(tk.Frame):
         self.text.insert(tk.END, str(self.tree.display()))
 
     def insert_node(self):
-        for i in range(10):
-            key = random.randint(0, 100)
-            self.tree.insert(key, str(key))
+        versions = []
+        v, x = 10, 10000
+        for i in range(v):
+            keys = []
+            iavl.Metrics.reset()
+            for j in range(x):
+                key = random.randint(0, v * x * 2 // 3)
+                keys.append(key)
+                self.tree.insert(key, str(key))
+            versions.append(keys)
+            print("version {}: {}".format(i, iavl.Metrics.get()))
+
+        self.tree = iavl.Tree()
+        for i, keys in enumerate(versions):
+            iavl.Metrics.reset()
+            for key in keys:
+                self.tree.insert(key, str(key), rebalance=False)
+            self.tree.rebalance()
+            print("version {}: {}".format(i, iavl.Metrics.get()))
+                             
 
 if __name__ == '__main__':
     root = tk.Tk()
